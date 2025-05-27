@@ -1,11 +1,15 @@
+package store
+
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/joho/godotenv"
 	"testing"
 )
 
 var testStoreService = &StorageService{}
 
 func init() {
+	_ = godotenv.Load("..\\.env")
 	testStoreService = InitializeStore()
 }
 func TestStoreInit(t *testing.T) {

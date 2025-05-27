@@ -3,11 +3,16 @@ package store
 import (
 	"context"
 	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/go-redis/redis"
 	"github.com/jackc/pgx/v5"
 	"os"
 	"time"
 )
+func init() {
+    _ = godotenv.Load("..\\.env")
+    testStoreService = InitializeStore()
+}
 
 // Define the struct wrapper around raw Redis client and Postgres DB
 type StorageService struct {
@@ -36,7 +41,7 @@ func InitializeStore() *StorageService {
 		DB:       0,
 	})
 
-	pong, err := redisClient.Ping(ctx).Result()
+	pong, err := redisClient.Ping().Result()
 	if err != nil {
 		panic(fmt.Sprintf("Error init Redis: %v", err))
 	}
@@ -63,7 +68,7 @@ and the generated shortUrl url
 */
 func SaveUrlMapping(shortUrl string, originalUrl string, userId string) {
 	// Save to Redis
-	err := storeService.redisClient.Set(ctx, shortUrl, originalUrl, CacheDuration).Err()
+	err := storeService.redisClient.Set(shortUrl, originalUrl, CacheDuration).Err()
 	if err != nil {
 		panic(fmt.Sprintf("Failed saving key url to Redis | Error: %v - shortUrl: %s - originalUrl: %s\n", err, shortUrl, originalUrl))
 	}
@@ -86,7 +91,7 @@ think about redirect.
 */
 func RetrieveInitialUrl(shortUrl string) string {
 	// Try Redis first
-	result, err := storeService.redisClient.Get(ctx, shortUrl).Result()
+	result, err := storeService.redisClient.Get(shortUrl).Result()
 	if err == nil {
 		return result
 	}
@@ -97,6 +102,6 @@ func RetrieveInitialUrl(shortUrl string) string {
 		panic(fmt.Sprintf("Failed RetrieveInitialUrl from Postgres | Error: %v - shortUrl: %s\n", err, shortUrl))
 	}
 	// Cache in Redis for future requests
-	_ = storeService.redisClient.Set(ctx, shortUrl, originalUrl, CacheDuration).Err()
+	_ = storeService.redisClient.Set(shortUrl, originalUrl, CacheDuration).Err()
 	return originalUrl
 }
