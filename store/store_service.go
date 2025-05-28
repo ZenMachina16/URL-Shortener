@@ -10,8 +10,7 @@ import (
 	"time"
 )
 func init() {
-    _ = godotenv.Load("..\\.env")
-    testStoreService = InitializeStore()
+	_ = godotenv.Load("..\\.env")
 }
 
 // Define the struct wrapper around raw Redis client and Postgres DB
