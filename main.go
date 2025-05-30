@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"url-shortener/endpoint_handler"
 	"url-shortener/store"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,10 +31,4 @@ func main() {
 		panic(fmt.Sprintf("Failed to start the web server - Error: %v", err))
 	}
 
-}
-
-func HandleShortUrlRedirect(c *gin.Context) {
-	shortUrl := c.Param("shortUrl")
-	initialUrl := store.RetrieveInitialUrl(shortUrl)
-	c.Redirect(302, initialUrl)
 }
