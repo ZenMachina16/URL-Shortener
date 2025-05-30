@@ -2,7 +2,7 @@ package endpoint_handler
 
 import (
 	"net/http"
-	"url-shortener/shorturl" // Ensure this package exists and is implemented
+	shorturl "url-shortener/shorturl"
 	"url-shortener/store"
 
 	"github.com/gin-gonic/gin"
@@ -29,4 +29,10 @@ func CreateShortUrl(c *gin.Context) {
 		"message":   "short url created successfully",
 		"short_url": host + shortUrl,
 	})
+}
+
+func HandleShortUrlRedirect(c *gin.Context) {
+	shortUrl := c.Param("shortUrl")
+	initialUrl := store.RetrieveInitialUrl(shortUrl)
+	c.Redirect(302, initialUrl)
 }
