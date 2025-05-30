@@ -1,0 +1,6 @@
+node_modules
+.env
+.next
+run-dev.bat
+run-dev.sh
+run-dev.ps1

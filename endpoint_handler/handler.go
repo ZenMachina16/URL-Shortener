@@ -10,8 +10,10 @@ import (
 
 // Request model definition
 type UrlCreationRequest struct {
-	LongUrl string `json:"long_url" binding:"required"`
-	UserId  string `json:"user_id" binding:"required"`
+	LongUrl  string `json:"long_url"`  // Original field
+	UserId   string `json:"user_id"`   // Original field
+	LongURL  string `json:"longUrl"`   // New frontend field (alternative)
+	UserID   string `json:"userId"`    // New frontend field (alternative)
 }
 
 func CreateShortUrl(c *gin.Context) {
@@ -21,8 +23,30 @@ func CreateShortUrl(c *gin.Context) {
 		return
 	}
 
-	shortUrl := shorturl.GenerateShortLink(creationRequest.LongUrl, creationRequest.UserId)
-	store.SaveUrlMapping(shortUrl, creationRequest.LongUrl, creationRequest.UserId)
+	// Handle both naming conventions
+	longUrl := creationRequest.LongUrl
+	userId := creationRequest.UserId
+	
+	if longUrl == "" {
+		longUrl = creationRequest.LongURL
+	}
+	
+	if userId == "" {
+		userId = creationRequest.UserID
+		// If still empty, use a default
+		if userId == "" {
+			userId = "guest-user"
+		}
+	}
+	
+	// Validation
+	if longUrl == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "URL is required"})
+		return
+	}
+
+	shortUrl := shorturl.GenerateShortLink(longUrl, userId)
+	store.SaveUrlMapping(shortUrl, longUrl, userId)
 
 	host := "http://localhost:9808/"
 	c.JSON(200, gin.H{
