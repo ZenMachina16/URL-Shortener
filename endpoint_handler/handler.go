@@ -46,7 +46,16 @@ func CreateShortUrl(c *gin.Context) {
 	}
 
 	shortUrl := shorturl.GenerateShortLink(longUrl, userId)
-	store.SaveUrlMapping(shortUrl, longUrl, userId)
+	
+	// Handle database save error
+	err := store.SaveUrlMapping(shortUrl, longUrl, userId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to save URL mapping. Please try again.",
+			"details": err.Error(),
+		})
+		return
+	}
 
 	host := "http://localhost:9808/"
 	c.JSON(200, gin.H{
@@ -58,5 +67,11 @@ func CreateShortUrl(c *gin.Context) {
 func HandleShortUrlRedirect(c *gin.Context) {
 	shortUrl := c.Param("shortUrl")
 	initialUrl := store.RetrieveInitialUrl(shortUrl)
+	
+	if initialUrl == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Short URL not found"})
+		return
+	}
+	
 	c.Redirect(302, initialUrl)
 }
