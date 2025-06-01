@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  // Optimize font loading to prevent external request issues
+  optimizeFonts: true,
+  // Add experimental features if needed
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
 };
 
 export default nextConfig;

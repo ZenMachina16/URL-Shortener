@@ -106,12 +106,12 @@ func SaveUrlMapping(shortCode string, originalUrl string, userId string) error {
 	// Save to Redis first (non-blocking)
 	if storeService.redisClient != nil {
 		err := storeService.redisClient.Set(shortCode, originalUrl, CacheDuration).Err()
-		if err != nil {
+	if err != nil {
 			log.Printf("Warning: Failed saving to Redis | Error: %v - shortCode: %s", err, shortCode)
 			// Continue even if Redis fails
 		} else {
 			log.Printf("Successfully saved to Redis: %s", shortCode)
-		}
+	}
 	}
 	
 	// Save to Postgres if available (using camelCase columns as in actual database)
@@ -135,7 +135,7 @@ func SaveUrlMapping(shortCode string, originalUrl string, userId string) error {
 		log.Printf("With values: urlId=%s, shortCode=%s, originalUrl=%s, userId=%s", urlId, shortCode, originalUrl, userId)
 
 		result, err := storeService.dbPool.Exec(ctx, query, urlId, shortCode, originalUrl, userId)
-		if err != nil {
+	if err != nil {
 			log.Printf("Error: Failed saving to Postgres | Error: %v - shortCode: %s", err, shortCode)
 			log.Printf("Full error details: %+v", err)
 			// If Postgres fails but Redis succeeded, still return success
@@ -167,9 +167,9 @@ func RetrieveInitialUrl(shortCode string) string {
 	// Try Redis first
 	if storeService.redisClient != nil {
 		result, err := storeService.redisClient.Get(shortCode).Result()
-		if err == nil {
-			return result
-		}
+	if err == nil {
+		return result
+	}
 	}
 
 	// If not found in Redis, try Postgres (using camelCase columns)
@@ -177,7 +177,7 @@ func RetrieveInitialUrl(shortCode string) string {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		var originalUrl string
+	var originalUrl string
 		err := storeService.dbPool.QueryRow(ctx, 
 			`SELECT "originalUrl" FROM urls WHERE "shortCode" = $1 AND "isActive" = true`, 
 			shortCode).Scan(&originalUrl)

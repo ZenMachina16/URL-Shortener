@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/providers/SessionProvider";
 
-const geistSans = Geist({
+const geist = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
@@ -14,8 +14,57 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "URL Shortener - Modern Link Management",
-  description: "A modern URL shortener service for creating and managing short links",
+  title: "ShortLink - Modern URL Shortener",
+  description: "Transform your long URLs into powerful, trackable short links with advanced analytics.",
+};
+
+// Client-side scroll animation observer
+const ScrollObserver = () => {
+  if (typeof window !== 'undefined') {
+    const observerScript = `
+      // Scroll animation observer
+      const observeElements = () => {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+            }
+          });
+        }, {
+          threshold: 0.1,
+          rootMargin: '0px 0px -50px 0px'
+        });
+
+        const animateElements = document.querySelectorAll('.scroll-animate');
+        animateElements.forEach(el => observer.observe(el));
+      };
+
+      // Initialize when DOM is loaded
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', observeElements);
+      } else {
+        observeElements();
+      }
+
+      // Re-observe on navigation (for SPAs)
+      let lastUrl = location.href;
+      new MutationObserver(() => {
+        const url = location.href;
+        if (url !== lastUrl) {
+          lastUrl = url;
+          setTimeout(observeElements, 100);
+        }
+      }).observe(document, { subtree: true, childList: true });
+    `;
+    
+    return (
+      <script 
+        dangerouslySetInnerHTML={{ __html: observerScript }}
+        suppressHydrationWarning
+      />
+    );
+  }
+  return null;
 };
 
 export default function RootLayout({
@@ -24,12 +73,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 dark:bg-gray-900`}
+        className={`${geist.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-black via-gray-900 to-blue-900 min-h-screen`}
         suppressHydrationWarning
       >
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          {children}
+        </SessionProvider>
+        <ScrollObserver />
       </body>
     </html>
   );

@@ -7,9 +7,10 @@ import { buildApiUrl } from '@/lib/config';
 
 interface UrlShortenerFormProps {
   onSuccess?: () => void;
+  requireAuth?: boolean;
 }
 
-export default function UrlShortenerForm({ onSuccess }: UrlShortenerFormProps) {
+export default function UrlShortenerForm({ onSuccess, requireAuth = false }: UrlShortenerFormProps) {
   const { data: session, status } = useSession();
   const [url, setUrl] = useState('');
   const [shortUrl, setShortUrl] = useState('');
@@ -18,6 +19,12 @@ export default function UrlShortenerForm({ onSuccess }: UrlShortenerFormProps) {
 
   const shortenUrl = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (requireAuth && !session) {
+      setError('Please sign in to use the URL shortener');
+      return;
+    }
+    
     if (!url.trim()) {
       setError('Please enter a valid URL');
       return;
@@ -42,9 +49,9 @@ export default function UrlShortenerForm({ onSuccess }: UrlShortenerFormProps) {
 
       if (response.ok) {
         setShortUrl(data.short_url);
-        setUrl(''); // Clear the input
+        setUrl('');
         if (onSuccess) {
-          onSuccess(); // Call the callback to refresh dashboard data
+          onSuccess();
         }
       } else {
         setError(data.error || 'Failed to shorten URL');
@@ -60,7 +67,38 @@ export default function UrlShortenerForm({ onSuccess }: UrlShortenerFormProps) {
     navigator.clipboard.writeText(shortUrl);
   };
 
-  // Show authentication prompt for unauthenticated users (but allow guest usage)
+  if (requireAuth && !session && status !== "loading") {
+    return (
+      <div className="w-full max-w-2xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Sign In Required</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+            Please sign in to access our URL shortening service and enjoy advanced features like analytics and link management.
+          </p>
+          <div className="space-y-3">
+            <Link
+              href="/auth/signin"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+              </svg>
+              Sign In to Continue
+            </Link>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Quick sign in with Google or GitHub
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (status === "loading") {
     return (
       <div className="w-full max-w-2xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
@@ -84,7 +122,7 @@ export default function UrlShortenerForm({ onSuccess }: UrlShortenerFormProps) {
             : "Transform your long URLs into short, shareable links. Sign in for advanced features!"
           }
         </p>
-        {!session && (
+        {!session && !requireAuth && (
           <div className="mt-4">
             <Link 
               href="/auth/signin"
