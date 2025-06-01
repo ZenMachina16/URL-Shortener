@@ -114,7 +114,7 @@ func SaveUrlMapping(shortCode string, originalUrl string, userId string) error {
 		}
 	}
 	
-	// Save to Postgres if available (using new schema)
+	// Save to Postgres if available (using camelCase columns as in actual database)
 	if storeService.dbPool != nil {
 		log.Printf("Attempting to save to PostgreSQL...")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -172,7 +172,7 @@ func RetrieveInitialUrl(shortCode string) string {
 		}
 	}
 
-	// If not found in Redis, try Postgres (using new schema)
+	// If not found in Redis, try Postgres (using camelCase columns)
 	if storeService.dbPool != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -205,7 +205,7 @@ func TrackUrlClick(shortCode string, userId string, ipAddress string, userAgent 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// First get the URL ID
+	// First get the URL ID using correct quoted column name
 	var urlId string
 	err := storeService.dbPool.QueryRow(ctx, 
 		`SELECT id FROM urls WHERE "shortCode" = $1`, 
@@ -216,19 +216,28 @@ func TrackUrlClick(shortCode string, userId string, ipAddress string, userAgent 
 	}
 
 	// Generate click ID
-	clickId := generateClickId() // You might want to implement this function
+	clickId := generateClickId()
 
-	// Insert click record
+	// Handle guest users - use NULL instead of "guest-user" to avoid foreign key constraint
+	var userIdParam interface{}
+	if userId == "guest-user" || userId == "" {
+		userIdParam = nil // Use NULL for guest users
+	} else {
+		userIdParam = userId
+	}
+
+	// Insert click record using the correct camelCase column names
 	_, err = storeService.dbPool.Exec(ctx,
-		`INSERT INTO url_clicks (id, url_id, user_id, ip_address, user_agent, referer, clicked_at) 
+		`INSERT INTO url_clicks (id, "urlId", "userId", "ipAddress", "userAgent", referer, "clickedAt") 
 		 VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-		clickId, urlId, userId, ipAddress, userAgent, referer,
+		clickId, urlId, userIdParam, ipAddress, userAgent, referer,
 	)
 	if err != nil {
 		log.Printf("Warning: Failed tracking URL click | Error: %v - shortCode: %s", err, shortCode)
 		return err
 	}
 
+	log.Printf("Successfully tracked click for short URL: %s", shortCode)
 	return nil
 }
 
