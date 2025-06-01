@@ -2,13 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { buildShortUrl } from '@/lib/config';
 
 interface Link {
   id: string;
   shortCode: string;
   originalUrl: string;
+  title?: string;
+  clickCount: number;
   createdAt: string;
-  clicks: number;
+  lastClickAt?: string;
+  isActive: boolean;
 }
 
 export default function MyLinksPage() {
@@ -17,33 +21,32 @@ export default function MyLinksPage() {
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // TODO: Fetch user's links from API
-    // For now, showing sample data
-    setTimeout(() => {
-      setLinks([
-        {
-          id: "1",
-          shortCode: "abc123",
-          originalUrl: "https://www.example.com/very-long-url-that-was-shortened",
-          createdAt: "2024-01-20T10:30:00Z",
-          clicks: 25
-        },
-        {
-          id: "2", 
-          shortCode: "xyz789",
-          originalUrl: "https://www.github.com/user/repository",
-          createdAt: "2024-01-19T15:45:00Z",
-          clicks: 12
-        }
-      ]);
+  const fetchLinks = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/urls?limit=50');
+      if (response.ok) {
+        const data = await response.json();
+        setLinks(data.urls);
+      } else {
+        console.error('Failed to fetch links');
+      }
+    } catch (error) {
+      console.error('Error fetching links:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  useEffect(() => {
+    if (session?.user) {
+      fetchLinks();
+    }
+  }, [session]);
 
   const copyToClipboard = async (shortCode: string) => {
     try {
-      await navigator.clipboard.writeText(`http://localhost:9808/${shortCode}`);
+      await navigator.clipboard.writeText(buildShortUrl(shortCode));
       setCopiedId(shortCode);
       setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
@@ -53,8 +56,18 @@ export default function MyLinksPage() {
 
   const deleteLink = async (id: string) => {
     if (confirm('Are you sure you want to delete this link?')) {
-      // TODO: Call delete API
-      setLinks(links.filter(link => link.id !== id));
+      try {
+        const response = await fetch(`/api/urls/${id}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          setLinks(links.filter(link => link.id !== id));
+        } else {
+          console.error('Failed to delete link');
+        }
+      } catch (error) {
+        console.error('Error deleting link:', error);
+      }
     }
   };
 
@@ -117,7 +130,7 @@ export default function MyLinksPage() {
                     <div className="flex items-center space-x-3 mb-2">
                       <div className="flex items-center bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg">
                         <span className="text-blue-600 dark:text-blue-400 font-mono text-sm">
-                          localhost:9808/{link.shortCode}
+                          {buildShortUrl(link.shortCode)}
                         </span>
                         <button
                           onClick={() => copyToClipboard(link.shortCode)}
@@ -140,11 +153,22 @@ export default function MyLinksPage() {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
                         </svg>
-                        {link.clicks} clicks
+                        {link.clickCount} clicks
                       </div>
+
+                      {!link.isActive && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                          Inactive
+                        </span>
+                      )}
                     </div>
                     
                     <div className="mb-2">
+                      {link.title && (
+                        <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                          {link.title}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                         <span className="font-medium">Original:</span>{' '}
                         <a 
@@ -158,16 +182,20 @@ export default function MyLinksPage() {
                       </p>
                     </div>
                     
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Created on {formatDate(link.createdAt)}
+                    <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                      <span>Created {formatDate(link.createdAt)}</span>
+                      {link.lastClickAt && (
+                        <span>Last clicked {formatDate(link.lastClickAt)}</span>
+                      )}
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-2 ml-4">
                     <button
-                      onClick={() => window.open(`http://localhost:9808/${link.shortCode}`, '_blank')}
+                      onClick={() => window.open(buildShortUrl(link.shortCode), '_blank')}
                       className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                       title="Visit link"
+                      disabled={!link.isActive}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />

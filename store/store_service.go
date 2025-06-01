@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/go-redis/redis"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"os"
@@ -101,40 +100,59 @@ func InitializeStore() *StorageService {
 /* We want to be able to save the mapping between the originalUrl 
 and the generated shortUrl url
 */
-func SaveUrlMapping(shortUrl string, originalUrl string, userId string) error {
+func SaveUrlMapping(shortCode string, originalUrl string, userId string) error {
+	log.Printf("SaveUrlMapping called with: shortCode=%s, originalUrl=%s, userId=%s", shortCode, originalUrl, userId)
+	
 	// Save to Redis first (non-blocking)
 	if storeService.redisClient != nil {
-		err := storeService.redisClient.Set(shortUrl, originalUrl, CacheDuration).Err()
+		err := storeService.redisClient.Set(shortCode, originalUrl, CacheDuration).Err()
 		if err != nil {
-			log.Printf("Warning: Failed saving to Redis | Error: %v - shortUrl: %s", err, shortUrl)
+			log.Printf("Warning: Failed saving to Redis | Error: %v - shortCode: %s", err, shortCode)
 			// Continue even if Redis fails
+		} else {
+			log.Printf("Successfully saved to Redis: %s", shortCode)
 		}
 	}
 	
-	// Save to Postgres if available
+	// Save to Postgres if available (using new schema)
 	if storeService.dbPool != nil {
+		log.Printf("Attempting to save to PostgreSQL...")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		_, err := storeService.dbPool.Exec(ctx,
-			`INSERT INTO url_mappings (short_url, original_url, user_id, created_at) 
-			 VALUES ($1, $2, $3, NOW())
-			 ON CONFLICT (short_url) DO UPDATE SET 
-			 original_url = EXCLUDED.original_url, 
-			 user_id = EXCLUDED.user_id, 
-			 updated_at = NOW()`,
-			shortUrl, originalUrl, userId,
-		)
+		// Generate a unique ID for the URL record
+		urlId := generateUrlId()
+		log.Printf("Generated URL ID: %s", urlId)
+
+		query := `INSERT INTO urls (id, "shortCode", "originalUrl", "userId", "createdAt", "updatedAt") 
+			 VALUES ($1, $2, $3, $4, NOW(), NOW())
+			 ON CONFLICT ("shortCode") DO UPDATE SET 
+			 "originalUrl" = EXCLUDED."originalUrl", 
+			 "userId" = EXCLUDED."userId", 
+			 "updatedAt" = NOW()`
+		
+		log.Printf("Executing query: %s", query)
+		log.Printf("With values: urlId=%s, shortCode=%s, originalUrl=%s, userId=%s", urlId, shortCode, originalUrl, userId)
+
+		result, err := storeService.dbPool.Exec(ctx, query, urlId, shortCode, originalUrl, userId)
 		if err != nil {
-			log.Printf("Warning: Failed saving to Postgres | Error: %v - shortUrl: %s", err, shortUrl)
+			log.Printf("Error: Failed saving to Postgres | Error: %v - shortCode: %s", err, shortCode)
+			log.Printf("Full error details: %+v", err)
 			// If Postgres fails but Redis succeeded, still return success
 			if storeService.redisClient != nil {
+				log.Printf("Returning success because Redis succeeded, even though Postgres failed")
 				return nil
 			}
 			return fmt.Errorf("database error: %v", err)
 		}
+		
+		rowsAffected := result.RowsAffected()
+		log.Printf("Successfully saved to PostgreSQL. Rows affected: %d", rowsAffected)
+	} else {
+		log.Printf("Warning: No PostgreSQL connection available")
 	}
 	
+	log.Printf("SaveUrlMapping completed successfully")
 	// Success if we saved to at least one storage
 	return nil
 }
@@ -145,37 +163,83 @@ is provided. This is when users will be calling the shortlink in the
 url, so what we need to do here is to retrieve the long url and
 think about redirect.
 */
-func RetrieveInitialUrl(shortUrl string) string {
+func RetrieveInitialUrl(shortCode string) string {
 	// Try Redis first
 	if storeService.redisClient != nil {
-		result, err := storeService.redisClient.Get(shortUrl).Result()
+		result, err := storeService.redisClient.Get(shortCode).Result()
 		if err == nil {
 			return result
 		}
 	}
 
-	// If not found in Redis, try Postgres
+	// If not found in Redis, try Postgres (using new schema)
 	if storeService.dbPool != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		var originalUrl string
 		err := storeService.dbPool.QueryRow(ctx, 
-			"SELECT original_url FROM url_mappings WHERE short_url = $1", 
-			shortUrl).Scan(&originalUrl)
+			`SELECT "originalUrl" FROM urls WHERE "shortCode" = $1 AND "isActive" = true`, 
+			shortCode).Scan(&originalUrl)
 		if err != nil {
-			log.Printf("Warning: Failed RetrieveInitialUrl from Postgres | Error: %v - shortUrl: %s", err, shortUrl)
+			log.Printf("Warning: Failed RetrieveInitialUrl from Postgres | Error: %v - shortCode: %s", err, shortCode)
 			return ""
 		}
 
 		// Cache in Redis for future requests
 		if storeService.redisClient != nil {
-			_ = storeService.redisClient.Set(shortUrl, originalUrl, CacheDuration).Err()
+			_ = storeService.redisClient.Set(shortCode, originalUrl, CacheDuration).Err()
 		}
 		return originalUrl
 	}
 
 	return ""
+}
+
+// Track URL click for analytics
+func TrackUrlClick(shortCode string, userId string, ipAddress string, userAgent string, referer string) error {
+	if storeService.dbPool == nil {
+		return nil // Skip tracking if no database
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// First get the URL ID
+	var urlId string
+	err := storeService.dbPool.QueryRow(ctx, 
+		`SELECT id FROM urls WHERE "shortCode" = $1`, 
+		shortCode).Scan(&urlId)
+	if err != nil {
+		log.Printf("Warning: Failed to find URL for tracking | Error: %v - shortCode: %s", err, shortCode)
+		return err
+	}
+
+	// Generate click ID
+	clickId := generateClickId() // You might want to implement this function
+
+	// Insert click record
+	_, err = storeService.dbPool.Exec(ctx,
+		`INSERT INTO url_clicks (id, url_id, user_id, ip_address, user_agent, referer, clicked_at) 
+		 VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+		clickId, urlId, userId, ipAddress, userAgent, referer,
+	)
+	if err != nil {
+		log.Printf("Warning: Failed tracking URL click | Error: %v - shortCode: %s", err, shortCode)
+		return err
+	}
+
+	return nil
+}
+
+// Helper function to generate URL ID (simple implementation)
+func generateUrlId() string {
+	return fmt.Sprintf("url_%d", time.Now().UnixNano())
+}
+
+// Helper function to generate click ID (simple implementation)
+func generateClickId() string {
+	return fmt.Sprintf("click_%d", time.Now().UnixNano())
 }
 
 // Graceful shutdown

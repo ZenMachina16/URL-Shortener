@@ -1,38 +1,29 @@
-import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
-  // Define paths that are considered public
-  const publicPaths = [
-    "/",
-    "/auth/signin",
-    "/auth/signup",
-    "/auth/forgot-password",
-  ];
+  // Temporarily disable dashboard protection for testing
+  // Just handle auth page redirects for now
   
-  // Check if the path is public
-  const isPublicPath = publicPaths.some((publicPath) => 
-    path === publicPath || path.startsWith("/api/") || path.startsWith("/_next/")
-  );
+  console.log("Middleware running for path:", path);
 
-  // Define protected paths (dashboard routes)
-  const isProtectedPath = path.startsWith("/dashboard");
+  // Only redirect authenticated users away from auth pages
+  if (path === "/auth/signin" || path === "/auth/signup") {
+    // Check for NextAuth session cookies (multiple possible names)
+    const sessionCookies = [
+      req.cookies.get("next-auth.session-token"),
+      req.cookies.get("__Secure-next-auth.session-token"),
+      req.cookies.get("next-auth.session"),
+      req.cookies.get("__Host-next-auth.session-token")
+    ];
 
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
-
-  // Redirect unauthenticated users trying to access protected routes to sign-in
-  if (isProtectedPath && !token) {
-    return NextResponse.redirect(new URL("/auth/signin", req.url));
-  }
-
-  // Redirect authenticated users on auth pages to dashboard
-  if ((path === "/auth/signin" || path === "/auth/signup") && token) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    const hasSessionCookie = sessionCookies.some(cookie => cookie?.value);
+    
+    if (hasSessionCookie) {
+      console.log("Redirecting authenticated user away from auth pages");
+      return NextResponse.redirect(new URL("/", req.url));
+    }
   }
 
   return NextResponse.next();

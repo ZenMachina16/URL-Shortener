@@ -22,7 +22,7 @@ export default function SignIn() {
   const handleSignIn = async (providerId: string) => {
     setIsLoading(providerId);
     try {
-      await signIn(providerId, { callbackUrl: "/dashboard" });
+      await signIn(providerId, { callbackUrl: "/" });
     } catch (error) {
       console.error("Sign in error:", error);
     } finally {

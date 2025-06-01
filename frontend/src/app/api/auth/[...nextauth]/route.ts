@@ -2,6 +2,8 @@ import { NextAuthOptions } from "next-auth";
 import NextAuth from "next-auth/next";
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { prisma } from "@/lib/prisma";
 
 // Validate environment variables
 const requiredEnvVars = {
@@ -22,8 +24,8 @@ if (missingEnvVars.length > 0) {
 }
 
 export const authOptions: NextAuthOptions = {
-  // Remove Prisma adapter temporarily
-  // adapter: PrismaAdapter(prisma),
+  // Enable Prisma adapter for database sessions
+  adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
@@ -35,7 +37,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   session: {
-    strategy: "jwt",
+    strategy: "database",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
@@ -54,13 +56,12 @@ export const authOptions: NextAuthOptions = {
         return false;
       }
     },
-    async session({ token, session }) {
+    async session({ session, user }) {
       try {
-        if (token && session.user) {
-          session.user.id = token.sub as string;
-          session.user.name = token.name;
-          session.user.email = token.email;
-          session.user.image = token.picture as string;
+        if (session.user) {
+          session.user.id = user.id;
+          session.user.role = (user as any).role || 'USER';
+          session.user.subscriptionTier = (user as any).subscriptionTier || 'FREE';
         }
         return session;
       } catch (error) {
@@ -68,23 +69,30 @@ export const authOptions: NextAuthOptions = {
         return session;
       }
     },
-    async jwt({ token, user, account }) {
-      try {
-        if (user) {
-          token.id = user.id;
-        }
-        return token;
-      } catch (error) {
-        console.error("JWT callback error:", error);
-        return token;
-      }
-    },
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback:", { url, baseUrl });
-      // Allows relative callback URLs
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url;
+      
+      // Handle sign-in redirects - redirect to home page
+      if (url.includes('/auth/signin') || url.includes('/api/auth/signin')) {
+        return baseUrl; // This sends them to the home page (/)
+      }
+      
+      // Handle sign-out redirects
+      if (url.includes('/auth/signout') || url.includes('/api/auth/signout')) {
+        return baseUrl;
+      }
+      
+      // If URL is relative, make it absolute
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+      
+      // If URL is on the same origin, allow it
+      if (new URL(url).origin === baseUrl) {
+        return url;
+      }
+      
+      // Default to home page for authenticated users
       return baseUrl;
     },
   },

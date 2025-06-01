@@ -14,18 +14,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User model - supports both OAuth and email/password authentication
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  password      String?   // For email/password authentication
+  role          UserRole  @default(USER)
+  
+  // OAuth relations
   accounts      Account[]
   sessions      Session[]
+  
+  // URL shortener relations
+  urls          Url[]
+  urlClicks     UrlClick[]
+  
+  // Subscription/billing
+  subscriptionTier SubscriptionTier @default(FREE)
+  subscriptionExpires DateTime?
+  
+  // Timestamps
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  
+  @@map("users")
 }
 
+// OAuth Account model (NextAuth.js)
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -43,20 +62,96 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@map("accounts")
 }
 
+// Session model (NextAuth.js)
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
 }
 
+// Verification token model (NextAuth.js)
 model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
 
   @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// URL model - core functionality
+model Url {
+  id          String   @id @default(cuid())
+  shortCode   String   @unique // e.g., "abc123"
+  originalUrl String   @db.Text
+  title       String?  // Page title for better UX
+  description String?  // Meta description
+  
+  // User relationship
+  userId      String?  // Nullable for guest users
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Settings
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  password    String?  // Optional password protection
+  
+  // Analytics
+  clickCount  Int      @default(0)
+  clicks      UrlClick[]
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastClickAt DateTime?
+  
+  @@map("urls")
+}
+
+// URL Click tracking for analytics
+model UrlClick {
+  id        String   @id @default(cuid())
+  
+  // Relations
+  urlId     String
+  url       Url      @relation(fields: [urlId], references: [id], onDelete: Cascade)
+  
+  userId    String?  // Track authenticated users
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Analytics data
+  ipAddress String?
+  userAgent String?  @db.Text
+  referer   String?  @db.Text
+  country   String?
+  city      String?
+  device    String?  // mobile, desktop, tablet
+  browser   String?
+  os        String?
+  
+  // Timestamp
+  clickedAt DateTime @default(now())
+  
+  @@map("url_clicks")
+}
+
+// User roles
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+// Subscription tiers
+enum SubscriptionTier {
+  FREE
+  PRO
+  ENTERPRISE
 }

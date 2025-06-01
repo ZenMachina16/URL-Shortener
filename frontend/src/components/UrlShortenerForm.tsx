@@ -3,8 +3,13 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { buildApiUrl } from '@/lib/config';
 
-export default function UrlShortenerForm() {
+interface UrlShortenerFormProps {
+  onSuccess?: () => void;
+}
+
+export default function UrlShortenerForm({ onSuccess }: UrlShortenerFormProps) {
   const { data: session, status } = useSession();
   const [url, setUrl] = useState('');
   const [shortUrl, setShortUrl] = useState('');
@@ -22,14 +27,14 @@ export default function UrlShortenerForm() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:9808/create-short-url', {
+      const response = await fetch(buildApiUrl('/create-short-url'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           longUrl: url,
-          userId: session?.user?.email || 'guest-user'
+          userId: session?.user?.id || session?.user?.email || 'guest-user'
         }),
       });
 
@@ -37,6 +42,10 @@ export default function UrlShortenerForm() {
 
       if (response.ok) {
         setShortUrl(data.short_url);
+        setUrl(''); // Clear the input
+        if (onSuccess) {
+          onSuccess(); // Call the callback to refresh dashboard data
+        }
       } else {
         setError(data.error || 'Failed to shorten URL');
       }
