@@ -5,6 +5,24 @@ import GithubProvider from "next-auth/providers/github";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
+// Function to get the correct base URL
+function getBaseUrl() {
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL;
+  }
+  
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  
+  // Production URL fallback
+  if (process.env.NODE_ENV === "production") {
+    return "https://url-shortener-frontend-f9ew.onrender.com";
+  }
+  
+  return "http://localhost:3000";
+}
+
 // Validate environment variables
 const requiredEnvVars = {
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
@@ -70,30 +88,37 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }) {
-      console.log("Redirect callback:", { url, baseUrl });
+      const correctBaseUrl = getBaseUrl();
+      console.log("Redirect callback:", { url, baseUrl, correctBaseUrl });
       
       // Handle sign-in redirects - redirect to home page
       if (url.includes('/auth/signin') || url.includes('/api/auth/signin')) {
-        return baseUrl; // This sends them to the home page (/)
+        return correctBaseUrl; // This sends them to the home page (/)
       }
       
       // Handle sign-out redirects
       if (url.includes('/auth/signout') || url.includes('/api/auth/signout')) {
-        return baseUrl;
+        return correctBaseUrl;
       }
       
-      // If URL is relative, make it absolute
+      // If URL is relative, make it absolute with correct base URL
       if (url.startsWith("/")) {
-        return `${baseUrl}${url}`;
+        return `${correctBaseUrl}${url}`;
       }
       
       // If URL is on the same origin, allow it
-      if (new URL(url).origin === baseUrl) {
-        return url;
+      try {
+        const urlObj = new URL(url);
+        const baseUrlObj = new URL(correctBaseUrl);
+        if (urlObj.origin === baseUrlObj.origin) {
+          return url;
+        }
+      } catch (error) {
+        console.error("URL parsing error:", error);
       }
       
       // Default to home page for authenticated users
-      return baseUrl;
+      return correctBaseUrl;
     },
   },
 };
