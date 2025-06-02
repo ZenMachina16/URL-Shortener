@@ -14,7 +14,11 @@ func main() {
 	
 	// Configure CORS middleware with more permissive settings
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://192.168.1.33:3000"},
+		AllowOrigins:     []string{
+			"http://localhost:3000", 
+			"http://192.168.1.33:3000",
+			"https://*.onrender.com", // Allow all Render subdomains
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		AllowCredentials: true,
