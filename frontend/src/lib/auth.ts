@@ -4,12 +4,25 @@ import GithubProvider from "next-auth/providers/github";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { getFrontendBaseUrl } from "@/config/urls";
+import { headers } from "next/headers";
 
 // Function to get the correct base URL
-function getBaseUrl(): string {
+async function getBaseUrl(): Promise<string> {
   // For production, first try NEXTAUTH_URL
   if (process.env.NEXTAUTH_URL) {
     return process.env.NEXTAUTH_URL;
+  }
+
+  try {
+    // Then try to get from request headers
+    const headersList = await headers();
+    const forwardedHost = headersList.get("x-forwarded-host");
+    if (forwardedHost) {
+      const protocol = headersList.get("x-forwarded-proto") || "https";
+      return `${protocol}://${forwardedHost}`;
+    }
+  } catch (error) {
+    console.error("Error getting headers:", error);
   }
 
   return getFrontendBaseUrl();
@@ -61,7 +74,7 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }) {
-      const correctBaseUrl = getBaseUrl();
+      const correctBaseUrl = await getBaseUrl();
       console.log("Redirect callback:", { url, baseUrl, correctBaseUrl });
       
       // Always use the correct base URL
