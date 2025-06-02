@@ -8,10 +8,6 @@ import { headers } from "next/headers";
 
 // Function to get the correct base URL
 function getBaseUrl() {
-  if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000";
-  }
-
   // For production, first try NEXTAUTH_URL
   if (process.env.NEXTAUTH_URL) {
     return process.env.NEXTAUTH_URL;
@@ -26,7 +22,9 @@ function getBaseUrl() {
   }
 
   // Finally fallback to hardcoded production URL
-  return "https://url-shortener-frontend-f9ew.onrender.com";
+  return process.env.NODE_ENV === "development" 
+    ? "http://localhost:3000"
+    : "https://url-shortener-frontend-f9ew.onrender.com";
 }
 
 // Validate environment variables
@@ -47,8 +45,8 @@ if (missingEnvVars.length > 0) {
   console.error("Missing required environment variables:", missingEnvVars);
 }
 
-export const authOptions: NextAuthOptions = {
-  // Enable Prisma adapter for database sessions
+// Create auth options
+const options: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -119,5 +117,6 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-const handler = NextAuth(authOptions);
+// Create and export handler
+const handler = NextAuth(options);
 export { handler as GET, handler as POST }; 

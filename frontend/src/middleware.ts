@@ -1,5 +1,6 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import { getFrontendBaseUrl } from "./config/urls";
 
 // Function to get the correct base URL
 function getBaseUrl(requestHeaders: Headers) {
@@ -17,15 +18,15 @@ function getBaseUrl(requestHeaders: Headers) {
     return `${protocol}://${host}`;
   }
 
-  // Finally fallback to NEXTAUTH_URL or hardcoded production URL
-  return process.env.NEXTAUTH_URL || "https://url-shortener-frontend-f9ew.onrender.com";
+  // Finally fallback to configured URL
+  return process.env.NEXTAUTH_URL || getFrontendBaseUrl();
 }
 
 export default withAuth(
   function middleware(request) {
     const requestHeaders = new Headers(request.headers);
     const baseUrl = getBaseUrl(requestHeaders);
-    console.log("Middleware running for path:", request.nextUrl.pathname);
+    console.log("Middleware running for path:", request.nextUrl.pathname, { baseUrl });
 
     // Add base URL to request headers for use in the application
     requestHeaders.set("x-url-base", baseUrl);
