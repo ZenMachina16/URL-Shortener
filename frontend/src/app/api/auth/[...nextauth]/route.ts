@@ -4,29 +4,6 @@ import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import { headers } from "next/headers";
-import { authOptions } from "@/lib/auth";
-
-// Function to get the correct base URL
-function getBaseUrl() {
-  // For production, first try NEXTAUTH_URL
-  if (process.env.NEXTAUTH_URL) {
-    return process.env.NEXTAUTH_URL;
-  }
-
-  // Then try to get from request headers
-  const headersList = headers();
-  const forwardedHost = headersList.get("x-forwarded-host");
-  if (forwardedHost) {
-    const protocol = headersList.get("x-forwarded-proto") || "https";
-    return `${protocol}://${forwardedHost}`;
-  }
-
-  // Finally fallback to hardcoded production URL
-  return process.env.NODE_ENV === "development" 
-    ? "http://localhost:3000"
-    : "https://url-shortener-frontend-f9ew.onrender.com";
-}
 
 // Validate environment variables
 const requiredEnvVars = {
@@ -46,8 +23,8 @@ if (missingEnvVars.length > 0) {
   console.error("Missing required environment variables:", missingEnvVars);
 }
 
-// Create auth options
-const options: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
+  // Enable Prisma adapter for database sessions
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -93,31 +70,37 @@ const options: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }) {
-      const correctBaseUrl = getBaseUrl();
-      console.log("Redirect callback:", { url, baseUrl, correctBaseUrl });
+      console.log("Redirect callback:", { url, baseUrl });
       
-      // Always use the correct base URL
-      if (url.startsWith("/")) {
-        return `${correctBaseUrl}${url}`;
+      // Use the deployed URL in production
+      const productionUrl = "https://url-shortener-frontend-f9ew.onrender.com";
+      const effectiveBaseUrl = process.env.NODE_ENV === "production" ? productionUrl : baseUrl;
+      
+      // Handle sign-in redirects
+      if (url.includes('/auth/signin') || url.includes('/api/auth/signin')) {
+        return effectiveBaseUrl;
       }
       
-      // If URL is on the same origin as the correct base URL, allow it
-      try {
-        const urlObj = new URL(url);
-        const baseUrlObj = new URL(correctBaseUrl);
-        if (urlObj.origin === baseUrlObj.origin) {
-          return url;
-        }
-      } catch (error) {
-        console.error("URL parsing error:", error);
+      // Handle sign-out redirects
+      if (url.includes('/auth/signout') || url.includes('/api/auth/signout')) {
+        return effectiveBaseUrl;
+      }
+      
+      // If URL is relative, make it absolute
+      if (url.startsWith("/")) {
+        return `${effectiveBaseUrl}${url}`;
+      }
+      
+      // If URL is on the same origin as our app, allow it
+      if (url.startsWith(effectiveBaseUrl)) {
+        return url;
       }
       
       // Default to home page
-      return correctBaseUrl;
-    },
+      return effectiveBaseUrl;
+    }
   },
 };
 
-// Create and export handler
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST }; 

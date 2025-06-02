@@ -17,6 +17,7 @@ func main() {
 		AllowOrigins:     []string{
 			"http://localhost:3000", 
 			"http://192.168.1.33:3000",
+			"https://url-shortener-frontend-f9ew.onrender.com",
 			"https://*.onrender.com", // Allow all Render subdomains
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},

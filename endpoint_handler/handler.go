@@ -3,6 +3,7 @@ package endpoint_handler
 import (
 	"net/http"
 	"log"
+	"os"
 	shorturl "url-shortener/shorturl"
 	"url-shortener/store"
 
@@ -68,7 +69,12 @@ func CreateShortUrl(c *gin.Context) {
 
 	log.Printf("Successfully saved URL mapping for user %s", userId)
 
-	host := "http://localhost:9808/"
+	// Use the correct host URL based on environment
+	host := "https://shrinkr-2k0u.onrender.com/"
+	if os.Getenv("GO_ENV") == "development" {
+		host = "http://localhost:9808/"
+	}
+
 	c.JSON(200, gin.H{
 		"message":   "short url created successfully",
 		"short_url": host + shortUrl,

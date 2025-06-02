@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "../api/auth/[...nextauth]/route";
 import Link from "next/link";
 import { UserButton } from "@/components/UserButton";
 
