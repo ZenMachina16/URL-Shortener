@@ -14,8 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ShortLink - Modern URL Shortener",
+  title: "Shrinkr - Modern URL Shortener",
   description: "Transform your long URLs into powerful, trackable short links with advanced analytics.",
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 // Client-side scroll animation observer
@@ -79,7 +84,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <SessionProvider>
-          {children}
+        {children}
         </SessionProvider>
         <ScrollObserver />
       </body>

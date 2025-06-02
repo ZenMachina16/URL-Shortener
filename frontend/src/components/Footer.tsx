@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 md:px-10">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-sm text-blue-200/70">
-            © 2025 ShortLink. All rights reserved.
+            © 2025 Shrinkr. All rights reserved.
           </p>
           <div className="flex space-x-6">
             <Link href="/privacy" className="text-sm text-blue-200/70 hover:text-cyan-300 transition-colors duration-300 hover:underline">

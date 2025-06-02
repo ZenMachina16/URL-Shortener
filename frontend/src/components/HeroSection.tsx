@@ -87,7 +87,7 @@ export default function HeroSection() {
                   <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
                   <div className="w-3 h-3 rounded-full bg-green-400"></div>
                   <div className="flex-1 ml-4 bg-gray-800/60 h-4 rounded-full flex items-center px-3">
-                    <span className="text-xs text-blue-300">shortlink.app</span>
+                    <span className="text-xs text-blue-300">shrinkr.app</span>
                   </div>
                 </div>
 

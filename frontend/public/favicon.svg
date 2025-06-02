@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="32" height="32" rx="7" fill="url(#bgGradient)"/>
+  
+  <!-- Shrinking arrows icon -->
+  <g stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Top-left arrows -->
+    <path d="m12 12V8.5M12 12H8.5M12 12 7.75 7.75"/>
+    <!-- Bottom-left arrows -->
+    <path d="m12 20v3.5M12 20H8.5M12 20l-4.25 4.25"/>
+    <!-- Top-right arrows -->
+    <path d="m20 12h3.5M20 12V8.5M20 12l4.25-4.25"/>
+    <!-- Bottom-right arrows -->
+    <path d="m20 20h3.5M20 20v3.5m0 0l4.25 4.25"/>
+  </g>
+</svg> 

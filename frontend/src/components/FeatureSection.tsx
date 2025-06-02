@@ -69,8 +69,8 @@ export default function FeatureSection() {
               Modern Link Management
             </span>
           </h2>
-          <p className="text-lg md:text-xl text-blue-100/90 max-w-3xl mx-auto leading-relaxed animate-fade-in-delayed">
-            ShortLink provides a comprehensive suite of tools to create, manage, and track your shortened URLs with enterprise-grade performance.
+          <p className="text-lg text-blue-200/80 mb-16 max-w-3xl mx-auto animate-fade-in-delayed">
+            Shrinkr provides a comprehensive suite of tools to create, manage, and track your shortened URLs with enterprise-grade performance.
           </p>
         </div>
         

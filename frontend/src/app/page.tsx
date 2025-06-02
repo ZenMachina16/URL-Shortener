@@ -197,7 +197,7 @@ export default async function Home() {
                 Ready to <span className="bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">Simplify</span> Your Links?
               </h2>
               <p className="text-xl text-blue-100/80 mb-10 max-w-3xl mx-auto">
-                Join thousands of businesses and individuals who trust ShortLink for their URL shortening needs.
+                Join thousands of businesses and individuals who trust Shrinkr for their URL shortening needs.
               </p>
               <a 
                 href="#url-shortener" 
@@ -209,8 +209,8 @@ export default async function Home() {
                   </svg>
                   Get Started for Free
                 </span>
-              </a>
-            </div>
+          </a>
+        </div>
           </div>
         </section>
       </main>
