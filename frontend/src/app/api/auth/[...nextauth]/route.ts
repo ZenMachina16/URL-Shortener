@@ -4,23 +4,29 @@ import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
 
 // Function to get the correct base URL
 function getBaseUrl() {
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:3000";
+  }
+
+  // For production, first try NEXTAUTH_URL
   if (process.env.NEXTAUTH_URL) {
     return process.env.NEXTAUTH_URL;
   }
-  
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+
+  // Then try to get from request headers
+  const headersList = headers();
+  const forwardedHost = headersList.get("x-forwarded-host");
+  if (forwardedHost) {
+    const protocol = headersList.get("x-forwarded-proto") || "https";
+    return `${protocol}://${forwardedHost}`;
   }
-  
-  // Production URL fallback
-  if (process.env.NODE_ENV === "production") {
-    return "https://url-shortener-frontend-f9ew.onrender.com";
-  }
-  
-  return "http://localhost:3000";
+
+  // Finally fallback to hardcoded production URL
+  return "https://url-shortener-frontend-f9ew.onrender.com";
 }
 
 // Validate environment variables
@@ -91,22 +97,12 @@ export const authOptions: NextAuthOptions = {
       const correctBaseUrl = getBaseUrl();
       console.log("Redirect callback:", { url, baseUrl, correctBaseUrl });
       
-      // Handle sign-in redirects - redirect to home page
-      if (url.includes('/auth/signin') || url.includes('/api/auth/signin')) {
-        return correctBaseUrl; // This sends them to the home page (/)
-      }
-      
-      // Handle sign-out redirects
-      if (url.includes('/auth/signout') || url.includes('/api/auth/signout')) {
-        return correctBaseUrl;
-      }
-      
-      // If URL is relative, make it absolute with correct base URL
+      // Always use the correct base URL
       if (url.startsWith("/")) {
         return `${correctBaseUrl}${url}`;
       }
       
-      // If URL is on the same origin, allow it
+      // If URL is on the same origin as the correct base URL, allow it
       try {
         const urlObj = new URL(url);
         const baseUrlObj = new URL(correctBaseUrl);
@@ -117,7 +113,7 @@ export const authOptions: NextAuthOptions = {
         console.error("URL parsing error:", error);
       }
       
-      // Default to home page for authenticated users
+      // Default to home page
       return correctBaseUrl;
     },
   },

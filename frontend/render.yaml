@@ -4,6 +4,12 @@ services:
     env: node
     buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+    initialDeployHook: sleep 60
     envVars:
       - key: NODE_ENV
         value: production
