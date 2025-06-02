@@ -1,53 +1,21 @@
 import { NextAuthOptions } from "next-auth";
-import NextAuth from "next-auth/next";
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import { headers } from "next/headers";
-import { authOptions } from "@/lib/auth";
+import { getFrontendBaseUrl } from "@/config/urls";
 
 // Function to get the correct base URL
-function getBaseUrl() {
+function getBaseUrl(): string {
   // For production, first try NEXTAUTH_URL
   if (process.env.NEXTAUTH_URL) {
     return process.env.NEXTAUTH_URL;
   }
 
-  // Then try to get from request headers
-  const headersList = headers();
-  const forwardedHost = headersList.get("x-forwarded-host");
-  if (forwardedHost) {
-    const protocol = headersList.get("x-forwarded-proto") || "https";
-    return `${protocol}://${forwardedHost}`;
-  }
-
-  // Finally fallback to hardcoded production URL
-  return process.env.NODE_ENV === "development" 
-    ? "http://localhost:3000"
-    : "https://url-shortener-frontend-f9ew.onrender.com";
+  return getFrontendBaseUrl();
 }
 
-// Validate environment variables
-const requiredEnvVars = {
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
-  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
-};
-
-// Check for missing environment variables
-const missingEnvVars = Object.entries(requiredEnvVars)
-  .filter(([key, value]) => !value)
-  .map(([key]) => key);
-
-if (missingEnvVars.length > 0) {
-  console.error("Missing required environment variables:", missingEnvVars);
-}
-
-// Create auth options
-const options: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -116,8 +84,4 @@ const options: NextAuthOptions = {
       return correctBaseUrl;
     },
   },
-};
-
-// Create and export handler
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST }; 
+}; 

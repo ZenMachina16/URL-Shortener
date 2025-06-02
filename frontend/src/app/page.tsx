@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import HeroSection from '../components/HeroSection';
