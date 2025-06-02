@@ -1,11 +1,12 @@
 "use client";
 
 import { signIn, getProviders } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-export default function SignIn() {
+// Create a separate component for the search params logic
+function SignInContent() {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [providers, setProviders] = useState<any>(null);
   const searchParams = useSearchParams();
@@ -157,5 +158,23 @@ export default function SignIn() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function SignInLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  );
+}
+
+// Main component wrapped with Suspense
+export default function SignIn() {
+  return (
+    <Suspense fallback={<SignInLoading />}>
+      <SignInContent />
+    </Suspense>
   );
 } 
