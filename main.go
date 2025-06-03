@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"url-shortener/endpoint_handler"
 	"url-shortener/store"
 	"github.com/gin-contrib/cors"
@@ -10,16 +11,29 @@ import (
 )
 
 func main() {
+	// Set Gin mode based on environment
+	if os.Getenv("GO_ENV") == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	
 	r := gin.Default()
 	
-	// Configure CORS middleware with more permissive settings
+	// Get allowed origins from environment or use defaults
+	allowedOrigins := []string{
+		"http://localhost:3000", 
+		"http://192.168.1.33:3000",
+		"https://url-shortener-frontend-f9ew.onrender.com",
+		"https://*.onrender.com", // Allow all Render subdomains
+	}
+	
+	if origins := os.Getenv("ALLOWED_ORIGINS"); origins != "" {
+		// In production, you can set specific origins
+		allowedOrigins = append(allowedOrigins, origins)
+	}
+	
+	// Configure CORS middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{
-			"http://localhost:3000", 
-			"http://192.168.1.33:3000",
-			"https://url-shortener-frontend-f9ew.onrender.com",
-			"https://*.onrender.com", // Allow all Render subdomains
-		},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		AllowCredentials: true,
@@ -29,6 +43,7 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Welcome to the URL Shortener API",
+			"environment": os.Getenv("GO_ENV"),
 		})
 	})
 
@@ -40,12 +55,17 @@ func main() {
 		endpoint_handler.HandleShortUrlRedirect(c)
 	})
 
-	// Note that store initialization happens here
+	// Initialize store
 	store.InitializeStore()
 
-	err := r.Run(":9808")
+	// Get port from environment or use default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "9808"
+	}
+
+	err := r.Run(":" + port)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to start the web server - Error: %v", err))
 	}
-
 }

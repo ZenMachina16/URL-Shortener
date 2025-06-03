@@ -70,9 +70,19 @@ func CreateShortUrl(c *gin.Context) {
 	log.Printf("Successfully saved URL mapping for user %s", userId)
 
 	// Use the correct host URL based on environment
-	host := "https://shrinkr-2k0u.onrender.com/"
-	if os.Getenv("GO_ENV") == "development" {
-		host = "http://localhost:9808/"
+	host := os.Getenv("BASE_URL")
+	if host == "" {
+		// Fallback based on environment
+		if os.Getenv("GO_ENV") == "development" {
+			host = "http://localhost:9808/"
+		} else {
+			host = "https://shrinkr-2k0u.onrender.com/"
+		}
+	}
+	
+	// Ensure host ends with "/"
+	if host[len(host)-1] != '/' {
+		host += "/"
 	}
 
 	c.JSON(200, gin.H{
